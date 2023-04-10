@@ -124,17 +124,16 @@ router.post('/signin', function (req, res) {
 router.route('/movies/:movie_title')
     .get(authJwtController.isAuthenticated, function (req, res) {
         if (req.query && req.query.reviews && req.query.reviews === "true") {
-
-            Movie.findOne({title: req.params.movie_title}, function(err, movie) {
+            Movie.findOne({title: req.params.title}, function(err, movie) {
                 if (err) {
-                    return res.status(403).json({success: false, message: "Unable to get reviews for title passed in"});
+                    return res.status(403).json({success: false, message: "Unable to get reviews."});
                 } else if (!movie) {
-                    return res.status(403).json({success: false, message: "Unable to find title passed in."});
+                    return res.status(403).json({success: false, message: "Unable to find title."});
                 } else {
 
                     Movie.aggregate()
-                        .match({_id: mongoose.Types.ObjectId(movie._id)})
-                        .lookup({from: 'reviews', localField: '_id', foreignField: 'movie_id', as: 'reviews'})
+                        .match({id: mongoose.Types.ObjectId(movie.id)})
+                        .lookup({from: 'reviews', localField: 'userID', foreignField: 'movieID', as: 'reviews'})
                         .addFields({averaged_rating: {$avg: "$reviews.rating"}})
                         .exec (function(err, mov) {
                             if (err) {
@@ -147,7 +146,7 @@ router.route('/movies/:movie_title')
                 }
             })
         } else {
-            Movie.find({title: req.params.movie_title}).select("title year_released genre actors").exec(function (err, movie) {
+            Movie.find({title: req.params.title}).select("title year_released genre actors").exec(function (err, movie) {
                 if (err) {
                     return res.status(403).json({success: false, message: "Unable to retrieve title passed in."});
                 }
@@ -168,10 +167,10 @@ router.route('/movies/:movie_title')
         }
     });
 
-router.route('/search/:key_word')
+router.route('/search/:title')
     .get(authJwtController.isAuthenticated, function (req, res) {
 
-        var searchKey = new RegExp(req.params.key_word, 'i')
+        var searchKey = new RegExp(req.params.title, 'i')
         Movie.find({title: searchKey}, function(err, docs) {
             if (err) {
                 return res.status(403).json({success: false, message: "Unable to retrieve title passed in."});
