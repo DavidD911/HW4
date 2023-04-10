@@ -344,6 +344,9 @@ router.route('/movies/:review')
             })
         }
     })
+    .get(authJwtController.isAuthenticated, function(req, res){
+
+    })
     .all (function (req, res) {
         return res.status(403).json({success: false, message: "Only Post is supported here"});
     });
