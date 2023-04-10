@@ -192,7 +192,7 @@ router.route('/search/:title')
 
 router.route('/movies')
     .post(authJwtController.isAuthenticated, function (req, res) {
-        if (!req.body.title || !req.body.year_released || !req.body.genre || !req.body.actors[0] || !req.body.actors[1] || !req.body.actors[2]) {
+        if (!req.body.title || !req.body.releaseDate || !req.body.genre || !req.body.actors[3]) {
             return res.json({ success: false, message: 'Please include all information for title, year released, genre, and 3 actors.'});
         } else {
             var movie = new Movie();
