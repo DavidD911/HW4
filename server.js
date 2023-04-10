@@ -316,7 +316,7 @@ router.route('/movies/:review')
             var review = new Review();
             jwt.verify(req.headers.authorization.substring(4), process.env.SECRET_KEY, function(err, verifyRes){
                 if (err) {
-                    return res.status(403).json({success: false, message: "Unable to post review"});
+                    return res.status(403).json({success: false, message: "Unable to post review, verify error"});
                 } else {
                     review.userID = verifyRes.id;
                     Movie.findOne({title: req.body.title}, function(err, movie) {
@@ -332,7 +332,7 @@ router.route('/movies/:review')
 
                             review.save(function (err){
                                 if (err) {
-                                    return res.status(403).json({success: false, message: "Unable to post review"});
+                                    return res.status(403).json({success: false, message: "Unable to post review, save error"});
                                 } else {
                                     customAnalytics(movie.genere, 'post/review', 'POST', review.rating, movie.title, '1');
                                     return res.status(200).json({success: true, message: "Review posted successfully for: ", movie: movie});
