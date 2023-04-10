@@ -326,7 +326,7 @@ router.route('/movies/:review')
                             return res.status(403).json({success: false, message: "Unable to find title"});
                         } else {
                             review.movieID = movie.id;
-                            review.username = movie.username;
+                            // review.username = movie.username;
                             review.quote = req.body.quote;
                             review.rating = req.body.rating;
 
