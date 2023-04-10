@@ -332,7 +332,8 @@ router.route('/movies/:review')
 
                             review.save(function (err){
                                 if (err) {
-                                    return res.status(403).json({success: false, message: "Unable to post review, save error"});
+                                    return res.status(403).json({success: false, message: "Unable to post review, save error", err});
+
                                 } else {
                                     customAnalytics(movie.genere, 'post/review', 'POST', review.rating, movie.title, '1');
                                     return res.status(200).json({success: true, message: "Review posted successfully for: ", movie: movie});
