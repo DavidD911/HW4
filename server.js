@@ -122,7 +122,7 @@ router.post('/signin', function (req, res) {
 });
 
 router
-  .route("/")
+  .route("/movie")
   .get(authJwtController.isAuthenticated, async (req, res) => {
     try {
       const allMovies = await Movies.find({});
