@@ -121,239 +121,203 @@ router.post('/signin', function (req, res) {
     })
 });
 
-router.route('/movies/:title')
-    .get(authJwtController.isAuthenticated, function (req, res) {
-        if (req.query && req.query.reviews && req.query.reviews === "true") {
-            Movie.findOne({title: req.params.title}, function(err, movie) {
-                if (err) {
-                    return res.status(403).json({success: false, message: "Unable to get reviews."});
-                } else if (!movie) {
-                    return res.status(403).json({success: false, message: "Unable to find title."});
-                } else {
+router
+  .route("/")
+  .get(authJwtController.isAuthenticated, async (req, res) => {
+    try {
+      const allMovies = await Movies.find({});
+      res.json(allMovies);
+    } catch (error) {
+      res.json({
+        message: "Could not get all movies",
+        error,
+      });
+    }
+  })
 
-                    Movie.aggregate()
-                        .match({id: mongoose.Types.ObjectId(movie.id)})
-                        .lookup({from: 'reviews', localField: 'userID', foreignField: 'movieID', as: 'reviews'})
-                        .addFields({averaged_rating: {$avg: "$reviews.rating"}})
-                        .exec (function(err, mov) {
-                            if (err) {
-                                return res.status(403).json({success: false, message: "The movie title parameter was not found."});
-                            } else {
-                                return res.status(200).json({success: true, message: "Movie title passed in and it's reviews were found.", movie: mov});
-                            }
-
-                        })
-                }
-            })
+  .post(authJwtController.isAuthenticated, async (req, res) => {
+    var o = getJSONObjectForMovieRequirement(req);
+    if (
+      req.body.title &&
+      req.body.releaseDate &&
+      req.body.genre &&
+      req.body.actors.length >= 3
+    ) {
+      const movie = new Movies(req.body);
+      try {
+        await movie.save();
+        o.message = "movie saved";
+        o.status = res.statusCode;
+        if (res.query) {
+          o.queryString = res.query;
         } else {
-            Movie.find({title: req.params.title}).select("title year_released genre actors").exec(function (err, movie) {
-                if (err) {
-                    return res.status(403).json({success: false, message: "Unable to retrieve title passed in."});
-                }
-                if (movie && movie.length > 0) {
-                    return res.status(200).json({
-                        success: true,
-                        message: "Successfully retrieved movie.",
-                        movie: movie
-                    });
-                } else {
-                    return res.status(404).json({
-                        success: false,
-                        message: "Unable to retrieve a match for title passed in."
-                    });
-                }
-
-            })
+          o.queryString = "No query string";
         }
-    });
+        res.json(o);
+      } catch (err) {
+        res.json({
+          message: "Could not save the movie",
+        });
+      }
+    } else {
+      res.json({
+        action: "Failed to save because missing information",
+        message:
+          "Please enter title: '', releaseDate: '',\
+          genre: 'Comedy, Action, Adventure, Drama,\
+          Fantasy, Horror, Mystery, Thriller, Western,\
+          Science Fiction', actors: [{actorName, characterName}, {}, {}] in JSON body",
+      });
+    }
+  })
+  .all((req, res) => {
+    res.status(200);
+    res.send("Doesn't support the HTTP method");
+  });
 
-router.route('/search/:title')
-    .get(authJwtController.isAuthenticated, function (req, res) {
-
-        var searchKey = new RegExp(req.params.title, 'i')
-        Movie.find({title: searchKey}, function(err, docs) {
-            if (err) {
-                return res.status(403).json({success: false, message: "Unable to retrieve title passed in."});
-            }
-            if (docs && docs.length > 0) {
-                return res.status(200).json({
-                    success: true,
-                    message: "Successfully retrieved movie.",
-                    movie: docs
-                });
-            } else {
-                return res.status(404).json({
-                    success: false,
-                    message: "Unable to retrieve a match for title passed in."
-                });
-            }
-        })
-    });
-
-router.route('/movies')
-    .post(authJwtController.isAuthenticated, function (req, res) {
-        if (!req.body.title || !req.body.releaseDate || !req.body.genre || !req.body.actors[1] && req.body.actors[2], req.body.actors[3]) {
-            return res.json({ success: false, message: 'Please include all information for title, year released, genre, and 3 actors.'});
+router
+  .route("/:title")
+  .get(async (req, res) => {
+    var o = getJSONObjectForMovieRequirement(req);
+    if (req.params.title && !req.query.reviews) {
+      try {
+        const title = req.params.title;
+        const movie = await Movies.find({ title: title });
+        o.data = movie;
+        if (o.data == 0) {
+          return res.json("Movie not found");
+        }
+        res.json(o);
+      } catch (error) {
+        console.log(error);
+        res.json({
+          message: "Could return movie",
+          error,
+        });
+      }
+    } else if (req.params.title && req.query.reviews) {
+      try {
+        const { title } = req.params;
+        const movie = await Movies.aggregate([
+          {
+            $match: { title },
+          },
+          {
+            $lookup: {
+              from: "reviews",
+              localField: "_id",
+              foreignField: "movieID",
+              as: "Reviews",
+            },
+          },
+        ]);
+        if (movie.length > 0) {
+          res.json(movie);
         } else {
-            var movie = new Movie();
-
-            movie.title = req.body.title;
-            movie.year_released = req.body.year_released;
-            movie.genre = req.body.genre;
-            movie.actors = req.body.actors;
-
-            movie.save(function (err) {
-                if (err) {
-                    if (err.code === 11000) {
-                        return res.json({ success: false, message: "That movie already exists."});
-                    } else {
-                        return res.send(err);
-                    }
-                } else {
-                    return res.status(200).send({success: true, message: "Successfully created movie."});
-                }
-            });
+          res.status(404).json({ message: "Movie not found" });
         }
-    })
-    .put(authJwtController.isAuthenticated, function (req, res) {
-        if (!req.body.find_title || !req.body.update_title) {
-            return res.json({ success: false, message: "Please provide a title to be updated as well as the new updated title."});
+      } catch (error) {
+        console.log(error);
+        res.json({
+          message: "Could return movie",
+          error,
+        });
+      }
+    } else {
+      res.json({
+        message:
+          "Please include the title of the movie to \
+        be returned in the url",
+      });
+    }
+  })
+  .delete(authJwtController.isAuthenticated, async (req, res) => {
+    if (req.params.title) {
+      try {
+        res = res.status(200);
+        if (req.get("Content-Type")) {
+          res = res.type(req.get("Content-Type"));
+        }
+        var o = getJSONObjectForMovieRequirement(req);
+        const d = await Movies.deleteOne({
+          title: req.params.title,
+        });
+        o.status = res.status;
+        o.message = `movie deleted ${req.params.title}`;
+        if (res.query) {
+          o.queryString = res.query;
         } else {
-            Movie.findOneAndUpdate( req.body.find_title, req.body.update_title, function (err, movie) {
-                if (err) {
-                    return res.status(403).json({success: false, message: "Unable to update title passed in."});
-                } else if (!movie) {
-                    return res.status(403).json({success: false, message: "Unable to find title to update."});
-                } else {
-                    return res.status(200).json({success: true, message: "Successfully updated title."});
-                }
-            });
+          o.queryString = "No query string";
         }
-    })
-    .delete(authJwtController.isAuthenticated, function (req, res) {
-        if (!req.body.find_title) {
-            return res.json({ success: false, message: "Please provide a title to delete." });
+        res.json(o);
+      } catch (err) {
+        res.json({
+          message: "Could not delete the movie",
+        });
+      }
+    } else {
+      res.json({
+        message:
+          "Please include the title of the movie to \
+        be deleted in the url /Casino",
+      });
+    }
+  })
+  .put(authJwtController.isAuthenticated, async (req, res) => {
+    const movie = await Movies.findOne({ title: req.params.title });
+    if (!movie) {
+      res.status(404).json({
+        message: "Movie not found",
+      });
+    }
+    if (
+      req.body.title &&
+      req.body.releaseDate &&
+      req.body.genre &&
+      req.body.actors.length >= 3
+    ) {
+      try {
+        res = res.status(200);
+        if (req.get("Content-Type")) {
+          res = res.type(req.get("Content-Type"));
+        }
+        var o = getJSONObjectForMovieRequirement(req);
+        const movie = await Movies.findOneAndUpdate(
+          {
+            title: req.params.title,
+          },
+          req.body,
+          { new: true }
+        );
+        o.status = res.status;
+        o.message = `movie updated ${movie}`;
+        if (res.query) {
+          o.queryString = res.query;
         } else {
-            Movie.findOneAndDelete( req.body.find_title, function (err, movie) {
-                if (err) {
-                    return res.status(403).json({success: false, message: "Unable to delete title passed in."});
-                } else if (!movie) {
-                    return res.status(403).json({success: false, message: "Unable to find title to delete."});
-                } else {
-                    return res.status(200).json({success: true, message: "Successfully deleted title."});
-                }
-            });
+          o.queryString = "No query string";
         }
-    })
-    .get(authJwtController.isAuthenticated, function (req, res) {
+        res.status(200).json(o);
+      } catch (err) {
+        res.status(404).json({
+          message: "Could not update the movie",
+        });
+      }
+    } else {
+      res.status(500).json({
+        action: "Failed to update movie because missing information",
+        message:
+          "Please enter title: '', releaseDate: '',\
+          genre: 'Comedy, Action, Adventure, Drama,\
+          Fantasy, Horror, Mystery, Thriller, Western,\
+          Science Fiction', actors: [{actorName, characterName}, {}, {}] in JSON body",
+      });
+    }
+  })
+  .all((req, res) => {
+    res.status(200);
+    res.send("Doesn't support the HTTP method");
+  });
 
-        if (req.query && req.query.reviews && req.query.reviews === "true") {
-
-            Movie.find(function (err, movies) {
-                if (err) {
-                    return res.status(403).json({success: false, message: "Unable to get reviews for titles"});
-                } else if (!movies) {
-                    return res.status(403).json({success: false, message: "Unable to find titles"});
-                } else {
-
-                    Movie.aggregate()
-                        // .match({_id: mongoose.Types.ObjectId(movie._id)})
-                        .lookup({from: 'reviews', localField: '_id', foreignField: 'movie_id', as: 'reviews'})
-                        .addFields({averaged_rating: {$avg: "$reviews.rating"}})
-                        .exec(function (err, mov) {
-                            if (err) {
-                                return res.status(403).json({
-                                    success: false,
-                                    message: "The movie title parameter was not found."
-                                });
-                            } else {
-                                mov.sort((a,b) => { return b.averaged_rating - a.averaged_rating; });
-                                return res.status(200).json({
-                                    success: true,
-                                    message: "Movie title passed in and it's reviews were found.",
-                                    movie: mov
-                                });
-                            }
-                        })
-                }
-            })
-        }
-
-        else {
-            // Movie.find(req.body.find_title).select("title year_released genre actors").exec(function (err, movie) {
-            //     if (err) {
-            //         return res.status(403).json({success: false, message: "Unable to retrieve title passed in."});
-            //     }
-            //     if (movie && movie.length > 0) {
-            //         return res.status(200).json({
-            //             success: true,
-            //             message: "Successfully retrieved movie.",
-            //             movie: movie
-            //         });
-            //     } else {
-            //         return res.status(404).json({
-            //             success: false,
-            //             message: "Unable to retrieve a match for title passed in."
-            //         });
-            //     }
-            // })
-            Movie.find(function(err, movies) {
-                if (err) res.send(err);
-
-                res.json(movies).status(200).end();
-            })
-        }
-    })
-    .all(function(req, res) {
-        return res.status(403).json({success: false, message: "This HTTP method is not supported. Only GET, POST, PUT, and DELETE are supported."});
-    });
-
-router.route('/movies/:review')
-    .post(authJwtController.isAuthenticated, function(req, res) {
-        if (!req.body.quote || !req.body.rating || !req.body.title) {
-            return res.json({ success: false, message: 'Please add all information: Quote, Rating, Title'});
-        } else {
-            var review = new Review();
-            jwt.verify(req.headers.authorization.substring(4), process.env.SECRET_KEY, function(err, verifyRes){
-                if (err) {
-                    return res.status(403).json({success: false, message: "Unable to post review, verify error"});
-                } else {
-                    review.userID = verifyRes.id;
-                    Movie.findOne({title: req.body.title}, function(err, movie) {
-                        if (err) {
-                            return res.status(403).json({success: false, message: "Unable to post review, error occured"});
-                        } else if (!movie) {
-                            return res.status(403).json({success: false, message: "Unable to find title"});
-                        } else {
-                            review.movieID = movie.id;
-                            review.username = movie.username;
-                            review.quote = req.body.quote;
-                            review.rating = req.body.rating;
-
-                            review.save(function (err){
-                                if (err) {
-                                    return res.status(403).json({success: false, message: "Unable to post review, save error", err});
-
-                                } else {
-                                    customAnalytics(movie.genere, 'post/review', 'POST', review.rating, movie.title, '1');
-                                    return res.status(200).json({success: true, message: "Review posted successfully for: ", movie: movie});
-                                }
-                            })
-                        }
-                    })
-                }
-            })
-        }
-    })
-    .get(authJwtController.isAuthenticated, function(req, res){
-
-    })
-    .all (function (req, res) {
-        return res.status(403).json({success: false, message: "Only Post is supported here"});
-    });
-router.all('/', function (req, res){
-    return res.status(403).json({success: false, message: "Route not supported!"});
-});
 
 app.use('/', router);
 app.listen(process.env.PORT || 8080);
