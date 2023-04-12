@@ -5,7 +5,7 @@ var jwt = require("jsonwebtoken");
 var cors = require("cors");
 var User = require("./Users");
 const movieRoutes = require("./movieRoutes");
-const reviewRoutes = require("./reviewRoutes");
+const reviewRoutes = require("./reviewRoute");
 const mongoose = require("mongoose");
 require("dotenv").config();
 
