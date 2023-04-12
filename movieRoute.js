@@ -46,10 +46,7 @@ router
       res.json({
         action: "Failed to save because missing information",
         message:
-          "Please enter title: '', releaseDate: '',\
-          genre: 'Comedy, Action, Adventure, Drama,\
-          Fantasy, Horror, Mystery, Thriller, Western,\
-          Science Fiction', actors: [{actorName, characterName}, {}, {}] in JSON body",
+          "Please enter title, releaseDate, genere, and actors ",
       });
     }
   })
@@ -86,7 +83,7 @@ router
             $match: { title },
           },
           {
-            $lookup: {
+            $lookup: { //finds movie based on id and returns reviews along with the movie object
               from: "reviews",
               localField: "_id",
               foreignField: "movieID",
@@ -109,8 +106,7 @@ router
     } else {
       res.json({
         message:
-          "Please include the title of the movie to \
-        be returned in the url",
+          "Please include the title of the movie",
       });
     }
   })
@@ -142,7 +138,7 @@ router
       res.json({
         message:
           "Please include the title of the movie to \
-        be deleted in the url /Casino",
+        be deleted in the url",
       });
     }
   })
@@ -189,10 +185,7 @@ router
       res.status(500).json({
         action: "Failed to update movie because missing information",
         message:
-          "Please enter title: '', releaseDate: '',\
-          genre: 'Comedy, Action, Adventure, Drama,\
-          Fantasy, Horror, Mystery, Thriller, Western,\
-          Science Fiction', actors: [{actorName, characterName}, {}, {}] in JSON body",
+          "Please enter title, releaseDate, genere, and actors",
       });
     }
   })

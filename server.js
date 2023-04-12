@@ -4,7 +4,7 @@ var passport = require("passport");
 var jwt = require("jsonwebtoken");
 var cors = require("cors");
 var User = require("./Users");
-const movieRoutes = require("./movieRoutes");
+const movieRoutes = require("./movieRoute");
 const reviewRoutes = require("./reviewRoute");
 const mongoose = require("mongoose");
 require("dotenv").config();
