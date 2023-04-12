@@ -65,7 +65,7 @@ router
         const movie = await Movies.find({ title: title });
         o.data = movie;
         if (o.data == 0) {
-          return res.json("Movie not found");
+          return res.json("Movie does not exist/ couldnt be found");
         }
         res.json(o);
       } catch (error) {
@@ -94,7 +94,7 @@ router
         if (movie.length > 0) {
           res.json(movie);
         } else {
-          res.status(404).json({ message: "Movie not found" });
+          res.status(404).json({ message: "Movie does not exist/ couldnt be found" });
         }
       } catch (error) {
         console.log(error);
@@ -146,7 +146,7 @@ router
     const movie = await Movies.findOne({ title: req.params.title });
     if (!movie) {
       res.status(404).json({
-        message: "Movie not found",
+        message: "Movie does not exist/cannot be found",
       });
     }
     if (
