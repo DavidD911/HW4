@@ -29,6 +29,15 @@ var MovieSchema = new Schema({
       actorName: String,
       characterName: String
     }
+  },
+  imageUrl: {
+    type: String,
+    validate: {
+      validator: function (v) {
+        return /^(ftp|http|https): \/\/[^ "]+$/.test(v);
+      },
+      message: (props) => `${props.value} is not a valid url`,
+    },
   }
 });
 
